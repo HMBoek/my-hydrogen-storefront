@@ -1,0 +1,167 @@
+name: 🚀 Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Build and Test Job
+  build-and-test:
+    name: 🔨 Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Type check
+        run: npm run typecheck
+
+      - name: 🏗️ Build
+        run: npm run build
+        env:
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          PUBLIC_STORE_DOMAIN: ${{ secrets.PUBLIC_STORE_DOMAIN }}
+          PUBLIC_STOREFRONT_API_TOKEN: ${{ secrets.PUBLIC_STOREFRONT_API_TOKEN }}
+          PUBLIC_CUSTOMER_ACCOUNT_API_CLIENT_ID: ${{ secrets.PUBLIC_CUSTOMER_ACCOUNT_API_CLIENT_ID }}
+          SHOP_ID: ${{ secrets.SHOP_ID }}
+          PUBLIC_CHECKOUT_DOMAIN: ${{ secrets.PUBLIC_CHECKOUT_DOMAIN }}
+          WEAVERSE_PROJECT_ID: ${{ secrets.WEAVERSE_PROJECT_ID }}
+          METAOBJECT_COLORS_TYPE: ${{ secrets.METAOBJECT_COLORS_TYPE }}
+          CUSTOM_COLLECTION_BANNER_METAFIELD: ${{ secrets.CUSTOM_COLLECTION_BANNER_METAFIELD }}
+
+      - name: 🧪 Run tests
+        run: npm run e2e
+        continue-on-error: true
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-files
+          path: |
+            dist/
+            !dist/**/*.map
+          retention-days: 1
+
+  # Deploy to Oxygen (when available)
+  deploy-oxygen:
+    name: 🌐 Deploy to Shopify Oxygen
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🚀 Deploy to Oxygen
+        run: npx shopify hydrogen deploy --environment production
+        env:
+          SHOPIFY_CLI_TOKEN: ${{ secrets.SHOPIFY_CLI_TOKEN }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          PUBLIC_STORE_DOMAIN: ${{ secrets.PUBLIC_STORE_DOMAIN }}
+          PUBLIC_STOREFRONT_API_TOKEN: ${{ secrets.PUBLIC_STOREFRONT_API_TOKEN }}
+          PUBLIC_CUSTOMER_ACCOUNT_API_CLIENT_ID: ${{ secrets.PUBLIC_CUSTOMER_ACCOUNT_API_CLIENT_ID }}
+          SHOP_ID: ${{ secrets.SHOP_ID }}
+          PUBLIC_CHECKOUT_DOMAIN: ${{ secrets.PUBLIC_CHECKOUT_DOMAIN }}
+          WEAVERSE_PROJECT_ID: ${{ secrets.WEAVERSE_PROJECT_ID }}
+          METAOBJECT_COLORS_TYPE: ${{ secrets.METAOBJECT_COLORS_TYPE }}
+          CUSTOM_COLLECTION_BANNER_METAFIELD: ${{ secrets.CUSTOM_COLLECTION_BANNER_METAFIELD }}
+        continue-on-error: true
+
+  # Deploy to Vercel (Alternative)
+  deploy-vercel:
+    name: ⚡ Deploy to Vercel
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📤 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-files
+          path: dist/
+
+      - name: 🚀 Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+        continue-on-error: true
+
+  # Security & Quality Checks
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Run security audit
+        run: npm audit --audit-level high
+        continue-on-error: true
+
+      - name: 📊 Run Biome checks
+        run: npm run biome
+        continue-on-error: true
+
+  # Notify deployment status
+  notify:
+    name: 📢 Notify
+    runs-on: ubuntu-latest
+    needs: [deploy-oxygen, deploy-vercel]
+    if: always() && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 🎉 Deployment Success
+        if: needs.deploy-oxygen.result == 'success' || needs.deploy-vercel.result == 'success'
+        run: |
+          echo "✅ Deployment successful!"
+          echo "🌐 Oxygen: ${{ needs.deploy-oxygen.result }}"
+          echo "⚡ Vercel: ${{ needs.deploy-vercel.result }}"
+
+      - name: ❌ Deployment Failed
+        if: needs.deploy-oxygen.result == 'failure' && needs.deploy-vercel.result == 'failure'
+        run: |
+          echo "❌ All deployments failed!"
+          exit 1

@@ -1,10 +1,15 @@
-<h1 align="center">Pilot - Production-ready Shopify Hydrogen Theme</h1>
+<h1 align="center">My Hydrogen Storefront</h1>
+<p align="center">Production-ready Shopify Hydrogen storefront with Weaverse theme integration</p>
 
 <div align="center">
 
-📚 [Read the docs](https://weaverse.io/docs) | 🗣 [Join our community on Slack](https://join.slack.com/t/weaversecommunity/shared_invite/zt-235bv7d80-velzJU8CpZIHWdrzFwAdXg) | 🐞 [Report a bug](https://github.com/weaverse/pilot/issues)
+[![Deploy Status](https://github.com/HMBoek/my-hydrogen-storefront/workflows/�%20Deploy%20to%20Production/badge.svg)](https://github.com/HMBoek/my-hydrogen-storefront/actions)
+[![Built with Hydrogen](https://img.shields.io/badge/Built%20with-Hydrogen-blue.svg)](https://hydrogen.shopify.dev/)
+[![Weaverse Integration](https://img.shields.io/badge/Weaverse-Integrated-green.svg)](https://weaverse.io/)
 
-</div>
+🏪 **Live Store**: [View Demo](http://localhost:3456/) | 🚀 **Deploy Guide**: [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | 🔐 **Secrets Setup**: [GITHUB_SECRETS_SETUP.md](./GITHUB_SECRETS_SETUP.md)
+
+</div></div>
 
 ![Weaverse + Hydrogen + Shopify](https://cdn.shopify.com/s/files/1/0838/0052/3057/files/weaverse-x-hydrogen-x-shopify.png?v=1755245801)
 
